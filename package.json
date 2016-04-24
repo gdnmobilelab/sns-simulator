@@ -1,6 +1,6 @@
 {
   "name": "sns-simulator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "mock-aws-sinon": "^1.0.3"
+    "bluebird": "^3.3.5",
+    "mock-aws-sinon": "^1.0.3",
+    "promisify-aws-lambda": "0.0.2"
   },
   "devDependencies": {
     "aws-sdk": "^2.3.5",

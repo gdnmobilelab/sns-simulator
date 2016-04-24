@@ -1,6 +1,8 @@
 var mockAWSSinon = require('mock-aws-sinon');
 var EventEmitter = require('events');
 var util = require('util');
+var BBPromise = require('bluebird');
+var PromisifyAWSLambda = require('promisify-aws-lambda');
 
 var topics = {};
 var lambdas = {};
@@ -9,10 +11,16 @@ var SNSSimulator = function(opts) {};
 
 var sentMessagesCount = 0;
 
-var mockLambdaContext = {
-    done: function() {},
-    fail: function() {},
-    success: function() {}
+var createMockLambdaContext = function() {
+    return {
+        done: function(err) {
+            if (err) throw err;
+        },
+        fail: function(err) {
+            throw err;
+        },
+        success: function() {}
+    }
 }
 
 SNSSimulator.prototype = {
@@ -40,9 +48,8 @@ SNSSimulator.prototype = {
 
     _subscribe: function(params, cb) {
         
-
         if (!topics[params.TopicArn]) {
-            return cb(new Error("Topic does not exist."))
+            return cb(new Error("Topic " + params.TopicArn + " does not exist."))
         }
 
         var newArn = 'example:arn:subscription:' + params.TopicArn + ':' + topics[params.TopicArn]._subscribers.length 
@@ -58,8 +65,8 @@ SNSSimulator.prototype = {
 
     },
     _createTopic: function(params, cb) {
-        var newArn = 'example:arn:' + String(Object.keys(topics).length);
-
+        var awsAccountID = process.env.IAM_ROLE.split(':')[4];
+        var newArn = 'arn:aws:sns:' + [process.env.AWS_REGION, awsAccountID, params.Name].join(':')
         for (var topicArn in topics) {
             if (topicArn.Name === params.Name) {
                 return cb(new Error("Topic with this name already exists"))
@@ -77,17 +84,16 @@ SNSSimulator.prototype = {
     },
     _publish: function(params, cb) {
         this.emit('publish:' + params.TopicArn, params.Message);
-        cb(null);
-
-        topics[params.TopicArn]._subscribers.forEach(function(subscriber) {
+       
+        BBPromise.map(topics[params.TopicArn]._subscribers, function(subscriber) {
             if (subscriber.Protocol === 'lambda') {
-                var targetLambda = lambdas[subscriber.TargetArn];
+                var targetLambda = lambdas[subscriber.Endpoint];
                 if (!targetLambda) {
-                    console.warn("Send publish to lambda " + subscriber.TargetArn + " but it does not exist.");
+                    console.warn("Send publish to lambda " + subscriber.Endpoint + " but it does not exist.");
                     return;
                 }
 
-                targetLambda({
+                return PromisifyAWSLambda(targetLambda,{
                     Sns: {
                         Message: params.Message,
                         TopicArn: params.TopicArn,
@@ -99,7 +105,12 @@ SNSSimulator.prototype = {
 
                 });
             }
-        });
+        })
+        .then(() => {
+            cb(null);
+        })
+
+        
     }
 };
 

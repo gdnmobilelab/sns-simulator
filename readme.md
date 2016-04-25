@@ -43,3 +43,9 @@ Remove the stub from `aws-sdk` and restore it to regular functionality.
 Even though there is no built in functionality for different protocols,
 `SNSSimulator` will emit a `publish:${arn}` event when publishing, as well
 as a `subscribe` event when receiving a new subscriber.
+
+## Status
+
+So far I've used this in a limited capacity in one project. Which is to say,
+it is not very widely used or tested. You may run into problems using it - 
+open an issue if you do.

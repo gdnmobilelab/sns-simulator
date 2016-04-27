@@ -10,6 +10,7 @@ var lambdas = {};
 var SNSSimulator = function(opts) {};
 
 var sentMessagesCount = 0;
+var awsAccountID = 'DUMMYID';
 
 var createMockLambdaContext = function() {
     return {
@@ -29,6 +30,10 @@ SNSSimulator.prototype = {
         mockAWSSinon('SNS', 'subscribe', this._subscribe.bind(this));
         mockAWSSinon('SNS', 'createTopic', this._createTopic.bind(this));
         mockAWSSinon('SNS', 'publish', this._publish.bind(this));
+    },
+    
+    setAWSAccountID(id) {
+        awsAccountID = id;
     },
 
     reset: function() {
@@ -65,7 +70,6 @@ SNSSimulator.prototype = {
 
     },
     _createTopic: function(params, cb) {
-        var awsAccountID = process.env.IAM_ROLE.split(':')[4];
         var newArn = 'arn:aws:sns:' + [process.env.AWS_REGION, awsAccountID, params.Name].join(':')
         for (var topicArn in topics) {
             if (topicArn.Name === params.Name) {
@@ -94,14 +98,19 @@ SNSSimulator.prototype = {
                 }
 
                 return PromisifyAWSLambda(targetLambda,{
-                    Sns: {
-                        Message: params.Message,
-                        TopicArn: params.TopicArn,
-                        MessageId: (function() {
-                            sentMessagesCount++
-                            return 'message_' + sentMessagesCount
-                        })()
-                    }
+                    Records: [
+                        {
+                            Sns: {
+                                Message: params.Message,
+                                TopicArn: params.TopicArn,
+                                MessageId: (function() {
+                                    sentMessagesCount++
+                                    return 'message_' + sentMessagesCount
+                                })()
+                            }
+                        }
+                    ]
+                    
 
                 });
             }

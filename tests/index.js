@@ -56,7 +56,7 @@ describe("SNS Simulator", function() {
 
     it("allows a Lambda to subscribe to a topic", function(done) {
         var testLambda = function(event, context) {
-            assert.equal(event.Sns.Message, "hello");
+            assert.equal(event.Records[0].Sns.Message, "hello");
             done();
         }
 
@@ -71,7 +71,7 @@ describe("SNS Simulator", function() {
             sns.subscribe({
                 TopicArn: resp.TopicArn,
                 Protocol: 'lambda',
-                TargetArn: 'test-lambda-arn'
+                Endpoint: 'test-lambda-arn'
             }, function(err) {
                 assert.equal(err, null);
 
